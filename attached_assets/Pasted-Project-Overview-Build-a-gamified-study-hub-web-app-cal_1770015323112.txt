@@ -1,0 +1,138 @@
+Project Overview:
+Build a gamified study hub web app called StudyStudio with a Pomodoro-based tree growth system, notes, flashcards with AI quiz checking, music playback, user profile, and a clean landing/home page. The backend uses Supabase for authentication and database storage. Ensure separation of concerns between frontend, backend, and database.
+
+1. General Layout & Navigation:
+
+Top navigation bar with buttons:
+
+Home
+
+Pomodoro Tree
+
+Notes Vault
+
+Flashcards
+
+Music
+
+Profile
+
+2. Landing Page / Authentication:
+
+Login / Sign up page with green gradient background
+
+Use Supabase Authentication
+
+Native email/password login
+
+Google login
+
+3. Home Page:
+
+Section for:
+
+Mission
+
+Vision
+
+Developers’ pictures and names (placeholder boxes for now)
+
+Clean, well-separated sections
+
+4. Pomodoro Tree Page:
+
+Top-left: Pomodoro timer set to 25 mins study / 5 mins break
+
+Options: Pause, End Session
+
+Center: Animated tree
+
+Tree stages: sapling → juvenile → adult
+
+Grows after each completed Pomodoro session (25 + 5 mins)
+
+Reflect growth as user level (max 100 levels) displayed top-right
+
+Save current level and tree state to Supabase database
+
+5. Notes Vault Page:
+
+Clean, Google Notes-like layout
+
+Users can create, edit, and save text-based notes
+
+Notes stored in Supabase database
+
+6. Flashcards Page:
+
+Users can:
+
+Create a quiz with a custom quiz name
+
+Input their own questions as flashcards
+
+AI checks the correctness of answers using a free AI API
+
+Start Quiz button:
+
+Shuffles flashcards
+
+Checks answers in real-time
+
+Shows score and percentage at the end
+
+Options: End Quiz / Retry
+
+Clean input interface
+
+7. Music Page / Modal:
+
+Modal to input YouTube or Spotify link
+
+Floating mini-player with controls: Next, Pause, Stop
+
+8. Profile Page:
+
+Display:
+
+User name
+
+Highest Pomodoro level achieved
+
+Streak display similar to GitHub contribution graph
+
+Darker green = more frequent app usage in that month
+
+Save and fetch all data from Supabase
+
+9. Backend / Database:
+
+Use Supabase services for:
+
+Authentication
+
+Notes storage
+
+Pomodoro progress & tree level
+
+Flashcards / quiz data
+
+Profile info (name, streaks, highest level)
+
+Ensure separation of concerns: frontend, API calls, database
+
+10. Design & UX:
+
+Clean, modern, responsive layout
+
+Green accent for main elements (Pomodoro, buttons, headers)
+
+Animated transitions where appropriate (tree growth, modals, quiz feedback)
+
+Ensure data persistence across sessions
+
+Additional Notes:
+
+Create placeholder boxes for content that will be added later (e.g., developer pictures)
+
+Ensure modular code structure for easier future updates
