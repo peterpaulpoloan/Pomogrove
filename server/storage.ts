@@ -1,4 +1,4 @@
-import { 
+﻿import { 
   users, type User, type InsertUser,
   notes, type Note, type InsertNote,
   quizzes, type Quiz, type InsertQuiz,
@@ -7,7 +7,6 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
-import { authStorage } from "./replit_integrations/auth"; // Reuse auth storage for user lookups
 
 export interface IStorage {
   // Notes

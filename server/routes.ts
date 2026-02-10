@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { isAuthenticated } from "./auth/middleware";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -15,10 +15,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup Auth FIRST
-  await setupAuth(app);
-  registerAuthRoutes(app);
-
+  
   // === NOTES ROUTES ===
   app.get(api.notes.list.path, isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
