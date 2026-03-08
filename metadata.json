@@ -1,0 +1,8 @@
+{
+  "name": "Pomogrove",
+  "description": "A productivity suite focused on Pomodoro-style studying with gamified tree growth, active recall flashcards, and notes management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
