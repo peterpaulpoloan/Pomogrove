@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as Router from 'react-router-dom';
 import * as Auth from 'firebase/auth';
@@ -19,7 +18,9 @@ const { onAuthStateChanged, signOut } = Auth as any;
 
 const FOCUS_TIME = 25 * 60;
 const BREAK_TIME = 5 * 60;
-const API_BASE = 'http://localhost:5000/api';
+
+// ✅ Fixed: use Vite env var instead of hardcoded localhost
+const API_BASE = (import.meta.env as Record<string, string>).VITE_API_BASE || 'http://localhost:5000/api';
 
 const AppContent: React.FC<{
   user: UserProfile | null;
@@ -35,7 +36,7 @@ const AppContent: React.FC<{
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
 
   const toggleTimer = () => setIsActive(!isActive);
-  
+
   const resetTimer = useCallback(() => {
     setIsActive(false);
     setIsBreak(false);
@@ -52,17 +53,14 @@ const AppContent: React.FC<{
       if (!isBreak) {
         const newLevel = (user?.level || 0) + 1;
         const newSessions = (user?.totalSessions || 0) + 1;
-        
-        updateUser({ 
-          level: newLevel,
-          totalSessions: newSessions 
-        });
-        
+
+        updateUser({ level: newLevel, totalSessions: newSessions });
+
         if (user) {
           fetch(`${API_BASE}/pomo/complete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: user.uid })
+            body: JSON.stringify({ uid: user.uid }),
           }).catch(() => {
             const localStats = JSON.parse(localStorage.getItem(`stats_${user.uid}`) || '[]');
             localStats.push(new Date().toISOString());
@@ -76,7 +74,7 @@ const AppContent: React.FC<{
         setIsBreak(false);
         setTimeLeft(FOCUS_TIME);
       }
-      
+
       try {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.play();
@@ -94,29 +92,36 @@ const AppContent: React.FC<{
         <Routes>
           <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/" />} />
-          <Route path="/pomodoro" element={user ? (
-            <Pomodoro 
-              user={user} 
-              timeLeft={timeLeft} 
-              isActive={isActive} 
-              isBreak={isBreak} 
-              toggleTimer={toggleTimer} 
-              resetTimer={resetTimer} 
-            />
-          ) : <Navigate to="/" />} />
-          <Route path="/active-recall" element={user ? <ActiveRecall /> : <Navigate to="/" />} />
-          <Route path="/notes" element={user ? <Notes /> : <Navigate to="/" />} />
-          <Route path="/music" element={user ? <Music onSetYoutubeId={setYoutubeId} currentYoutubeId={youtubeId} /> : <Navigate to="/" />} />
+          <Route
+            path="/pomodoro"
+            element={
+              user ? (
+                <Pomodoro
+                  user={user}
+                  timeLeft={timeLeft}
+                  isActive={isActive}
+                  isBreak={isBreak}
+                  toggleTimer={toggleTimer}
+                  resetTimer={resetTimer}
+                />
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
+          {/* ✅ Fixed: pass user prop to ActiveRecall and Notes */}
+          <Route path="/active-recall" element={user ? <ActiveRecall user={user} /> : <Navigate to="/" />} />
+          <Route path="/notes" element={user ? <Notes user={user} /> : <Navigate to="/" />} />
+          <Route
+            path="/music"
+            element={user ? <Music onSetYoutubeId={setYoutubeId} currentYoutubeId={youtubeId} /> : <Navigate to="/" />}
+          />
         </Routes>
       </main>
-      
+
       {user && (
         <>
-          <FloatingTimer 
-            timeLeft={timeLeft} 
-            isBreak={isBreak} 
-            isVisible={showFloatingTimer} 
-          />
+          <FloatingTimer timeLeft={timeLeft} isBreak={isBreak} isVisible={showFloatingTimer} />
           <GlobalMusicPlayer youtubeId={youtubeId} onSetYoutubeId={setYoutubeId} />
         </>
       )}
@@ -155,30 +160,28 @@ const App: React.FC = () => {
             setUser(profile);
             localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(profile));
           } else {
-            const localData = localStorage.getItem(`user_${fbUser.uid}`);
-            if (localData) {
-              setUser(JSON.parse(localData));
-            } else {
-              const initialProfile: UserProfile = {
-                uid: fbUser.uid,
-                displayName: fbUser.displayName || 'Explorer',
-                photoURL: fbUser.photoURL || '',
-                bio: 'Studying in the grove',
-                level: 1,
-                streak: 0,
-                totalSessions: 0
-              };
-              setUser(initialProfile);
-              localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(initialProfile));
-            }
+            // User not in DB yet — create them
+            const initialProfile: UserProfile = {
+              uid: fbUser.uid,
+              displayName: fbUser.displayName || 'Explorer',
+              photoURL: fbUser.photoURL || '',
+              bio: 'Studying in the grove',
+              level: 1,
+              streak: 0,
+              totalSessions: 0,
+            };
+            // Try to create in DB
+            await fetch(`${API_BASE}/user`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(initialProfile),
+            }).catch(() => {});
+            setUser(initialProfile);
+            localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(initialProfile));
           }
         } catch (e) {
           const localData = localStorage.getItem(`user_${fbUser.uid}`);
-          if (localData) {
-            setUser(JSON.parse(localData));
-          } else {
-            setUser(null);
-          }
+          setUser(localData ? JSON.parse(localData) : null);
         }
       } else {
         setUser(null);
@@ -198,46 +201,49 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  const updateUser = useCallback(async (updated: Partial<UserProfile>) => {
-    if (!user) return;
-    const newUser = { ...user, ...updated };
-    setUser(newUser);
-    localStorage.setItem(`user_${user.uid}`, JSON.stringify(newUser));
-    
-    try {
-      await fetch(`${API_BASE}/user/${user.uid}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          display_name: newUser.displayName,
-          bio: newUser.bio,
-          level: newUser.level,
-          total_sessions: newUser.totalSessions
-        })
-      });
-    } catch (e) {
-      console.warn("Sync failed, saved to local storage.");
-    }
-  }, [user]);
+  const updateUser = useCallback(
+    async (updated: Partial<UserProfile>) => {
+      if (!user) return;
+      const newUser = { ...user, ...updated };
+      setUser(newUser);
+      localStorage.setItem(`user_${user.uid}`, JSON.stringify(newUser));
 
-  if (loading) return (
-    <div className="h-screen w-screen flex items-center justify-center bg-emerald-50">
-      <div className="animate-bounce text-emerald-600 text-4xl font-bold tracking-tight">PomoGrove</div>
-    </div>
+      try {
+        await fetch(`${API_BASE}/user/${user.uid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            display_name: newUser.displayName,
+            bio: newUser.bio,
+            level: newUser.level,
+            total_sessions: newUser.totalSessions,
+          }),
+        });
+      } catch (e) {
+        console.warn('Sync failed, saved to local storage.');
+      }
+    },
+    [user]
   );
+
+  if (loading)
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-emerald-50">
+        <div className="animate-bounce text-emerald-600 text-4xl font-bold tracking-tight">PomoGrove</div>
+      </div>
+    );
 
   return (
     <HashRouter>
-      <AppContent 
-        user={user} 
+      <AppContent
+        user={user}
         isOnline={isOnline}
-        updateUser={updateUser} 
-        handleLogout={handleLogout} 
-        handleLogin={handleLogin} 
+        updateUser={updateUser}
+        handleLogout={handleLogout}
+        handleLogin={handleLogin}
       />
     </HashRouter>
   );
 };
 
 export default App;
-  
