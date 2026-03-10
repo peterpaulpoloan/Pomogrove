@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { X } from 'lucide-react';
 
@@ -16,11 +15,11 @@ const GlobalMusicPlayer: React.FC<GlobalMusicPlayerProps> = ({ youtubeId, onSetY
   return (
     <div className="fixed bottom-4 left-4 z-[100] group pointer-events-none">
       <div className="bg-white/90 backdrop-blur-xl p-1.5 rounded-2xl shadow-2xl border border-white/20 overflow-hidden w-[140px] h-[80px] transition-all duration-500 hover:w-[320px] hover:h-[180px] cursor-move ring-1 ring-black/5 pointer-events-auto relative">
-        
-        {/* Close Button */}
-        <button 
+
+        {/* Close Button — always visible, above iframe */}
+        <button
           onClick={() => onSetYoutubeId(null)}
-          className="absolute top-1 left-1 z-[110] p-1 bg-stone-900/10 hover:bg-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100"
+          className="absolute top-1 right-1 z-[110] p-1 bg-black/40 hover:bg-rose-500 text-white rounded-lg transition-all"
           title="Stop Music"
         >
           <X size={14} />
@@ -38,14 +37,10 @@ const GlobalMusicPlayer: React.FC<GlobalMusicPlayerProps> = ({ youtubeId, onSetY
           referrerPolicy="strict-origin-when-cross-origin"
           className="rounded-xl"
         />
-        
-        {/* Subtle Overlay Label */}
-        <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Live Audio
-        </div>
 
-        <div className="absolute inset-0 bg-transparent flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-stone-900/5 pointer-events-none">
-          {/* Visual depth effect */}
+        {/* Subtle Overlay Label */}
+        <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Live Audio
         </div>
       </div>
     </div>

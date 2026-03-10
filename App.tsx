@@ -12,15 +12,16 @@ import Sidebar from './components/Sidebar';
 import FloatingTimer from './components/FloatingTimer';
 import GlobalMusicPlayer from './components/GlobalMusicPlayer';
 import { UserProfile } from './types';
+import { logActivity } from './lib/activityLogger';
 
 const { HashRouter, Routes, Route, Navigate, useLocation } = Router as any;
 const { onAuthStateChanged, signOut } = Auth as any;
 
-const FOCUS_TIME = 25 * 60;
-const BREAK_TIME = 5 * 60;
-
-// ✅ Fixed: use Vite env var instead of hardcoded localhost
-const API_BASE = (import.meta.env as Record<string, string>).VITE_API_BASE || 'http://localhost:5000/api';
+const DEMO_MODE = false;
+const FOCUS_TIME = DEMO_MODE ? 2 : 25 * 60;
+const BREAK_TIME = DEMO_MODE ? 2 : 5 * 60;
+const DEMO_LEVEL_INCREMENT = DEMO_MODE ? 50 : 1;
+const API_BASE = (import.meta.env as any).VITE_API_BASE || 'http://localhost:5000/api';
 
 const AppContent: React.FC<{
   user: UserProfile | null;
@@ -36,92 +37,53 @@ const AppContent: React.FC<{
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
 
   const toggleTimer = () => setIsActive(!isActive);
-
-  const resetTimer = useCallback(() => {
-    setIsActive(false);
-    setIsBreak(false);
-    setTimeLeft(FOCUS_TIME);
-  }, []);
+  const resetTimer = useCallback(() => { setIsActive(false); setIsBreak(false); setTimeLeft(FOCUS_TIME); }, []);
 
   useEffect(() => {
     let interval: any = null;
     if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((t) => t - 1);
-      }, 1000);
+      interval = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     } else if (timeLeft === 0) {
       if (!isBreak) {
-        const newLevel = (user?.level || 0) + 1;
-        const newSessions = (user?.totalSessions || 0) + 1;
-
-        updateUser({ level: newLevel, totalSessions: newSessions });
-
+        updateUser({ level: (user?.level || 0) + DEMO_LEVEL_INCREMENT, totalSessions: (user?.totalSessions || 0) + 1 });
         if (user) {
+          // Log pomodoro activity locally always
+          logActivity(user.uid, 'pomodoro');
+
+          // Also try syncing to API
           fetch(`${API_BASE}/pomo/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: user.uid }),
-          }).catch(() => {
-            const localStats = JSON.parse(localStorage.getItem(`stats_${user.uid}`) || '[]');
-            localStats.push(new Date().toISOString());
-            localStorage.setItem(`stats_${user.uid}`, JSON.stringify(localStats));
-          });
+          }).catch(() => {});
         }
-
-        setIsBreak(true);
-        setTimeLeft(BREAK_TIME);
-      } else {
-        setIsBreak(false);
-        setTimeLeft(FOCUS_TIME);
-      }
-
-      try {
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        audio.play();
-      } catch (e) {}
+        setIsBreak(true); setTimeLeft(BREAK_TIME);
+      } else { setIsBreak(false); setTimeLeft(FOCUS_TIME); }
+      try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch (e) {}
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft, isBreak, updateUser, user]);
 
-  const showFloatingTimer = isActive && location.pathname !== '/pomodoro';
-
   return (
     <div className="flex min-h-screen bg-stone-50">
+      {DEMO_MODE && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-400 text-amber-900 text-center text-xs font-bold py-1">
+          🎮 DEMO MODE — 1s cycles, +{DEMO_LEVEL_INCREMENT} levels per session. Set DEMO_MODE = false before deploying.
+        </div>
+      )}
       {user && <Sidebar user={user} onLogout={handleLogout} isOnline={isOnline} />}
-      <main className={`flex-1 ${user ? 'md:ml-64' : ''}`}>
+      <main className={`flex-1 ${user ? 'md:ml-64' : ''} ${DEMO_MODE ? 'mt-6' : ''}`}>
         <Routes>
           <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/" />} />
-          <Route
-            path="/pomodoro"
-            element={
-              user ? (
-                <Pomodoro
-                  user={user}
-                  timeLeft={timeLeft}
-                  isActive={isActive}
-                  isBreak={isBreak}
-                  toggleTimer={toggleTimer}
-                  resetTimer={resetTimer}
-                />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />
-          {/* ✅ Fixed: pass user prop to ActiveRecall and Notes */}
+          <Route path="/pomodoro" element={user ? <Pomodoro user={user} timeLeft={timeLeft} isActive={isActive} isBreak={isBreak} toggleTimer={toggleTimer} resetTimer={resetTimer} /> : <Navigate to="/" />} />
           <Route path="/active-recall" element={user ? <ActiveRecall user={user} /> : <Navigate to="/" />} />
           <Route path="/notes" element={user ? <Notes user={user} /> : <Navigate to="/" />} />
-          <Route
-            path="/music"
-            element={user ? <Music onSetYoutubeId={setYoutubeId} currentYoutubeId={youtubeId} /> : <Navigate to="/" />}
-          />
+          <Route path="/music" element={user ? <Music onSetYoutubeId={setYoutubeId} currentYoutubeId={youtubeId} /> : <Navigate to="/" />} />
         </Routes>
       </main>
-
       {user && (
         <>
-          <FloatingTimer timeLeft={timeLeft} isBreak={isBreak} isVisible={showFloatingTimer} />
+          <FloatingTimer timeLeft={timeLeft} isBreak={isBreak} isVisible={isActive && location.pathname !== '/pomodoro'} />
           <GlobalMusicPlayer youtubeId={youtubeId} onSetYoutubeId={setYoutubeId} />
         </>
       )}
@@ -136,12 +98,7 @@ const App: React.FC = () => {
   const syncTimer = useRef<any>(null);
 
   const checkConnection = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/health`);
-      setIsOnline(res.ok);
-    } catch (e) {
-      setIsOnline(false);
-    }
+    try { const res = await fetch(`${API_BASE}/health`); setIsOnline(res.ok); } catch (e) { setIsOnline(false); }
   }, []);
 
   useEffect(() => {
@@ -160,32 +117,29 @@ const App: React.FC = () => {
             setUser(profile);
             localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(profile));
           } else {
-            // User not in DB yet — create them
             const initialProfile: UserProfile = {
               uid: fbUser.uid,
-              displayName: fbUser.displayName || 'Explorer',
+              displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
               photoURL: fbUser.photoURL || '',
               bio: 'Studying in the grove',
-              level: 1,
-              streak: 0,
-              totalSessions: 0,
+              level: 1, streak: 0, totalSessions: 0,
             };
-            // Try to create in DB
-            await fetch(`${API_BASE}/user`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(initialProfile),
-            }).catch(() => {});
+            await fetch(`${API_BASE}/user`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialProfile) }).catch(() => {});
             setUser(initialProfile);
             localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(initialProfile));
           }
         } catch (e) {
           const localData = localStorage.getItem(`user_${fbUser.uid}`);
-          setUser(localData ? JSON.parse(localData) : null);
+          setUser(localData ? JSON.parse(localData) : fbUser ? {
+            uid: fbUser.uid, displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+            photoURL: fbUser.photoURL || '', bio: 'Studying in the grove', level: 1, streak: 0, totalSessions: 0,
+          } : null);
         }
-      } else {
-        setUser(null);
-      }
+
+        // ── Log login activity ──
+        logActivity(fbUser.uid, 'login');
+
+      } else { setUser(null); }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -194,54 +148,33 @@ const App: React.FC = () => {
   const handleLogin = (userData: UserProfile) => {
     setUser(userData);
     localStorage.setItem(`user_${userData.uid}`, JSON.stringify(userData));
+    logActivity(userData.uid, 'login');
   };
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    setUser(null);
-  };
+  const handleLogout = async () => { await signOut(auth); setUser(null); };
 
-  const updateUser = useCallback(
-    async (updated: Partial<UserProfile>) => {
-      if (!user) return;
-      const newUser = { ...user, ...updated };
-      setUser(newUser);
-      localStorage.setItem(`user_${user.uid}`, JSON.stringify(newUser));
+  const updateUser = useCallback(async (updated: Partial<UserProfile>) => {
+    if (!user) return;
+    const newUser = { ...user, ...updated };
+    setUser(newUser);
+    localStorage.setItem(`user_${user.uid}`, JSON.stringify(newUser));
+    try {
+      await fetch(`${API_BASE}/user/${user.uid}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: newUser.displayName, bio: newUser.bio, level: newUser.level, total_sessions: newUser.totalSessions }),
+      });
+    } catch (e) { console.warn('Sync failed, saved locally.'); }
+  }, [user]);
 
-      try {
-        await fetch(`${API_BASE}/user/${user.uid}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            display_name: newUser.displayName,
-            bio: newUser.bio,
-            level: newUser.level,
-            total_sessions: newUser.totalSessions,
-          }),
-        });
-      } catch (e) {
-        console.warn('Sync failed, saved to local storage.');
-      }
-    },
-    [user]
+  if (loading) return (
+    <div className="h-screen w-screen flex items-center justify-center bg-emerald-50">
+      <div className="animate-bounce text-emerald-600 text-4xl font-bold tracking-tight">PomoGrove</div>
+    </div>
   );
-
-  if (loading)
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-emerald-50">
-        <div className="animate-bounce text-emerald-600 text-4xl font-bold tracking-tight">PomoGrove</div>
-      </div>
-    );
 
   return (
     <HashRouter>
-      <AppContent
-        user={user}
-        isOnline={isOnline}
-        updateUser={updateUser}
-        handleLogout={handleLogout}
-        handleLogin={handleLogin}
-      />
+      <AppContent user={user} isOnline={isOnline} updateUser={updateUser} handleLogout={handleLogout} handleLogin={handleLogin} />
     </HashRouter>
   );
 };

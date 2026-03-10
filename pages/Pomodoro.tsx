@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Play, Pause, RotateCcw, Coffee, BookOpen } from 'lucide-react';
 import TreeVisual from '../components/TreeVisual';
@@ -13,13 +12,13 @@ interface PomodoroProps {
   resetTimer: () => void;
 }
 
-const Pomodoro: React.FC<PomodoroProps> = ({ 
-  user, 
-  timeLeft, 
-  isActive, 
-  isBreak, 
-  toggleTimer, 
-  resetTimer 
+const Pomodoro: React.FC<PomodoroProps> = ({
+  user,
+  timeLeft,
+  isActive,
+  isBreak,
+  toggleTimer,
+  resetTimer,
 }) => {
   const FOCUS_TIME = 25 * 60;
   const BREAK_TIME = 5 * 60;
@@ -30,70 +29,84 @@ const Pomodoro: React.FC<PomodoroProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = isBreak 
-    ? ((BREAK_TIME - timeLeft) / BREAK_TIME) * 100 
+  const progress = isBreak
+    ? ((BREAK_TIME - timeLeft) / BREAK_TIME) * 100
     : ((FOCUS_TIME - timeLeft) / FOCUS_TIME) * 100;
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center p-8">
-      <div className="w-full max-w-xl text-center space-y-12">
-        
-        {/* Visual Growth Section */}
-        <div className="flex flex-col items-center">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
+
+      {/* ── Hero: Tree ── */}
+      <div className="flex flex-col items-center gap-6 w-full max-w-lg">
+        <div className="text-center">
+          <p className={`text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 ${isBreak ? 'text-amber-500' : 'text-emerald-600'}`}>
+            {isBreak ? <Coffee size={14} /> : <BookOpen size={14} />}
+            {isBreak ? 'Break — watering the grove' : 'Focus session in progress'}
+          </p>
+        </div>
+
+        {/* Tree fills the screen */}
+        <div className="w-full flex justify-center">
           <TreeVisual level={user.level} />
-          <div className="mt-8 space-y-2">
-            <h1 className="text-4xl font-extrabold text-stone-900 tracking-tight">
-              {isBreak ? 'Relaxation Time' : 'Focus Session'}
-            </h1>
-            <p className="text-stone-500 font-medium">
-              {isBreak ? 'Time to water the grove.' : 'Stay focused to grow your sapling.'}
-            </p>
-          </div>
         </div>
 
-        {/* Timer Card */}
-        <div className="bg-white rounded-[2.5rem] shadow-2xl border border-stone-100 p-12 relative overflow-hidden">
-          {/* Progress Bar Background */}
-          <div 
-            className={`absolute top-0 left-0 h-2 transition-all duration-1000 ease-linear ${isBreak ? 'bg-amber-500' : 'bg-emerald-500'}`}
-            style={{ width: `${progress}%` }}
-          />
-          
-          <div className={`flex items-center justify-center gap-3 mb-4 font-bold uppercase tracking-widest text-sm ${isBreak ? 'text-amber-600' : 'text-emerald-600'}`}>
-            {isBreak ? <Coffee size={18} /> : <BookOpen size={18} />}
-            {isBreak ? 'On Break' : 'Studying'}
-          </div>
-
-          <div className="text-8xl font-black text-stone-900 tabular-nums mb-12 tracking-tighter">
-            {formatTime(timeLeft)}
-          </div>
-
-          <div className="flex items-center justify-center gap-6">
-            <button 
-              onClick={resetTimer}
-              className="p-5 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors shadow-sm"
-              aria-label="Reset"
-            >
-              <RotateCcw size={28} />
-            </button>
-            <button 
-              onClick={toggleTimer}
-              className={`
-                p-8 rounded-full shadow-xl transition-all duration-300 scale-110
-                ${isActive ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white'}
-                hover:scale-125
-              `}
-            >
-              {isActive ? <Pause size={40} fill="currentColor" /> : <Play size={40} className="ml-2" fill="currentColor" />}
-            </button>
-            <div className="p-5 w-16 invisible" /> {/* Placeholder for balance */}
-          </div>
-        </div>
-
-        <div className="text-stone-400 font-medium">
-          Level {user.level} / 300
+        <div className="text-center space-y-1">
+          <p className="text-2xl font-extrabold text-stone-900">Level {user.level}</p>
+          <p className="text-stone-400 text-sm font-medium">
+            {Math.floor(user.level / 10)} trees grown · {user.totalSessions} sessions completed
+          </p>
         </div>
       </div>
+
+      {/* ── Corner Timer Widget ── */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <div className="bg-white rounded-2xl shadow-2xl border border-stone-100 overflow-hidden w-48">
+
+          {/* Progress bar */}
+          <div className="h-1 bg-stone-100 w-full">
+            <div
+              className={`h-1 transition-all duration-1000 ease-linear ${isBreak ? 'bg-amber-400' : 'bg-emerald-500'}`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* Time display */}
+            <div className="text-center">
+              <span className="text-3xl font-black text-stone-900 tabular-nums tracking-tighter">
+                {formatTime(timeLeft)}
+              </span>
+              <p className={`text-xs font-bold uppercase tracking-widest mt-0.5 ${isBreak ? 'text-amber-500' : 'text-emerald-600'}`}>
+                {isBreak ? 'Break' : 'Focus'}
+              </p>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={resetTimer}
+                className="p-2 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 transition-colors"
+                aria-label="Reset"
+              >
+                <RotateCcw size={16} />
+              </button>
+              <button
+                onClick={toggleTimer}
+                className={`p-3 rounded-full shadow-md transition-all duration-200 hover:scale-110 ${
+                  isActive ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white'
+                }`}
+                aria-label={isActive ? 'Pause' : 'Play'}
+              >
+                {isActive
+                  ? <Pause size={20} fill="currentColor" />
+                  : <Play size={20} className="ml-0.5" fill="currentColor" />
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 };

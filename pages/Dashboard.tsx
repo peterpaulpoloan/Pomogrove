@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import StreakChart from '../components/StreakChart';
+import ActivityCalendar from '../components/ActivityCalendar';
 import { Award, Target, Flame, Edit3, Save } from 'lucide-react';
 
 interface DashboardProps {
@@ -113,21 +112,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
         </div>
       </div>
 
-      {/* Chart Section */}
+      {/* Activity Calendar Section */}
       <section className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h3 className="text-xl font-bold">Activity Progress</h3>
-            <p className="text-sm text-stone-500">Your focus session history</p>
-          </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-1.5 text-xs font-bold bg-stone-900 text-white rounded-lg">Week</button>
-            <button className="px-4 py-1.5 text-xs font-bold text-stone-500 hover:bg-stone-50 rounded-lg">Month</button>
-          </div>
-        </div>
-        <div className="h-80 w-full">
-          <StreakChart />
-        </div>
+        <ActivityCalendar user={user} />
       </section>
     </div>
   );

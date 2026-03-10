@@ -12,7 +12,6 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-
 if (!firebaseConfig.apiKey) {
   console.warn("Pomogrove Warning: Firebase API Key missing. Check your .env.local file.");
 } else {
