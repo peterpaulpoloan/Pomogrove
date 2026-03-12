@@ -15,7 +15,7 @@ import { UserProfile } from './types';
 import { logActivity } from './lib/activityLogger';
 
 const { HashRouter, Routes, Route, Navigate, useLocation } = Router as any;
-const { onAuthStateChanged, signOut } = Auth as any;
+const { onAuthStateChanged, signOut, getRedirectResult } = Auth as any;
 
 const DEMO_MODE = false;
 const FOCUS_TIME = DEMO_MODE ? 2 : 25 * 60;
@@ -107,16 +107,43 @@ const App: React.FC = () => {
     return () => clearInterval(syncTimer.current);
   }, [checkConnection]);
 
+  // Handle Google redirect result FIRST, before onAuthStateChanged
   useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        console.log("Checking for redirect result...");
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("Redirect result found:", result.user?.email);
+          // The onAuthStateChanged will handle the rest
+        } else {
+          console.log("No redirect result");
+        }
+      } catch (error) {
+        console.error("Redirect error:", error);
+      }
+    };
+    handleRedirect();
+  }, []);
+
+  useEffect(() => {
+    console.log("Setting up auth state listener...");
     const unsubscribe = onAuthStateChanged(auth, async (fbUser: any) => {
+      console.log("Auth state changed. User:", fbUser?.email || "null");
+      
       if (fbUser) {
         try {
+          console.log(`Fetching user from API: ${API_BASE}/user/${fbUser.uid}`);
           const res = await fetch(`${API_BASE}/user/${fbUser.uid}`);
+          console.log("API response status:", res.status);
+          
           if (res.ok) {
             const profile = await res.json();
+            console.log("User profile loaded:", profile);
             setUser(profile);
             localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(profile));
           } else {
+            console.log("User not in DB, creating new profile...");
             const initialProfile: UserProfile = {
               uid: fbUser.uid,
               displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
@@ -124,34 +151,73 @@ const App: React.FC = () => {
               bio: 'Studying in the grove',
               level: 1, streak: 0, totalSessions: 0,
             };
-            await fetch(`${API_BASE}/user`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialProfile) }).catch(() => {});
-            setUser(initialProfile);
-            localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(initialProfile));
+            
+            const createRes = await fetch(`${API_BASE}/user`, { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify(initialProfile) 
+            });
+            
+            console.log("Create user response:", createRes.status);
+            
+            if (createRes.ok) {
+              const savedProfile = await createRes.json();
+              console.log("New profile created:", savedProfile);
+              setUser(savedProfile);
+              localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(savedProfile));
+            } else {
+              console.log("Failed to create in DB, using local profile");
+              setUser(initialProfile);
+              localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(initialProfile));
+            }
           }
         } catch (e) {
+          console.error("Error syncing user:", e);
           const localData = localStorage.getItem(`user_${fbUser.uid}`);
-          setUser(localData ? JSON.parse(localData) : fbUser ? {
-            uid: fbUser.uid, displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
-            photoURL: fbUser.photoURL || '', bio: 'Studying in the grove', level: 1, streak: 0, totalSessions: 0,
-          } : null);
+          if (localData) {
+            console.log("Using cached user data");
+            setUser(JSON.parse(localData));
+          } else {
+            console.log("Creating fallback profile");
+            const fallbackProfile = {
+              uid: fbUser.uid, 
+              displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+              photoURL: fbUser.photoURL || '', 
+              bio: 'Studying in the grove', 
+              level: 1, 
+              streak: 0, 
+              totalSessions: 0,
+            };
+            setUser(fallbackProfile);
+          }
         }
 
         // ── Log login activity ──
         logActivity(fbUser.uid, 'login');
 
-      } else { setUser(null); }
+      } else { 
+        console.log("No user logged in");
+        setUser(null); 
+      }
+      
+      console.log("Setting loading to false");
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   const handleLogin = (userData: UserProfile) => {
+    console.log("handleLogin called with:", userData);
     setUser(userData);
     localStorage.setItem(`user_${userData.uid}`, JSON.stringify(userData));
     logActivity(userData.uid, 'login');
   };
 
-  const handleLogout = async () => { await signOut(auth); setUser(null); };
+  const handleLogout = async () => { 
+    console.log("Logging out...");
+    await signOut(auth); 
+    setUser(null); 
+  };
 
   const updateUser = useCallback(async (updated: Partial<UserProfile>) => {
     if (!user) return;
