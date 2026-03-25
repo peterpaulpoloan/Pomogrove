@@ -2,11 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Search, FileText, Calendar, Loader2 } from 'lucide-react';
 import { Note } from '../types';
 import { UserProfile } from '../types';
+import { logActivity, ActivityEvent } from '../lib/activityLogger';
+import { addXP } from '../lib/xpSystem';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 interface NotesProps {
   user: UserProfile;
+}
+
+/** Count words in a string (splits on whitespace, filters empty tokens) */
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
 const Notes: React.FC<NotesProps> = ({ user }) => {
@@ -44,6 +51,11 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
       return;
     }
     setIsSaving(true);
+
+    // Calculate word count from both title and content so XP reflects
+    // the full text the user wrote.
+    const wordCount = countWords(`${newTitle} ${newContent}`);
+
     try {
       const res = await fetch(`${API_BASE}/notes/${user.uid}`, {
         method: 'POST',
@@ -67,6 +79,14 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
       };
       setNotes([note, ...notes]);
     } finally {
+      // ── Log activity + award XP ──────────────────────────────────────
+      // Always runs whether the server call succeeded or fell back offline.
+      // logActivity dispatches 'activity-updated' so ActivityCalendar refreshes.
+      // addXP dispatches 'xp-updated' so LevelProgressPanel refreshes.
+      logActivity(user.uid, 'note' as ActivityEvent);
+      addXP(user.uid, { type: 'note', wordCount });
+      // ────────────────────────────────────────────────────────────────
+
       setNewTitle('');
       setNewContent('');
       setIsAdding(false);
@@ -87,7 +107,7 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
   const filteredNotes = notes.filter(
     (n) =>
       n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.content.toLowerCase().includes(searchQuery.toLowerCase())
+      n.content.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -127,12 +147,20 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
                 onChange={(e) => setNewTitle(e.target.value)}
                 autoFocus
               />
-              <textarea
-                className="w-full h-80 text-lg border-none outline-none resize-none placeholder:text-stone-300 text-stone-600"
-                placeholder="Start typing your thoughts..."
-                value={newContent}
-                onChange={(e) => setNewContent(e.target.value)}
-              />
+              {/* Live word count so the user knows how much XP they're earning */}
+              <div className="flex items-center justify-between">
+                <textarea
+                  className="w-full h-80 text-lg border-none outline-none resize-none placeholder:text-stone-300 text-stone-600"
+                  placeholder="Start typing your thoughts..."
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-stone-400 text-right -mt-4">
+                {countWords(`${newTitle} ${newContent}`)} words
+                {' · '}
+                +{Math.max(1, Math.round((countWords(`${newTitle} ${newContent}`) / 500) * 40))} XP on save
+              </p>
             </div>
             <div className="p-6 bg-stone-50 flex justify-end gap-3 border-t border-stone-100">
               <button
@@ -184,6 +212,10 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
                 <span className="flex items-center gap-1.5 text-xs text-stone-400 font-bold uppercase tracking-widest">
                   <Calendar size={12} />
                   {new Date(note.createdAt).toLocaleDateString()}
+                </span>
+                {/* Word count badge on each card */}
+                <span className="text-xs text-stone-300 font-medium">
+                  {countWords(`${note.title} ${note.content}`)}w
                 </span>
               </div>
             </div>

@@ -1,18 +1,18 @@
-
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as Router from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Timer, 
-  BrainCircuit, 
-  StickyNote, 
+import {
+  LayoutDashboard,
+  Timer,
+  BrainCircuit,
+  StickyNote,
   LogOut,
   Sprout,
   Music2,
   Cloud,
-  CloudOff
+  CloudOff,
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { loadXPBreakdown, xpToLevel } from '../lib/xpSystem';
 
 const { NavLink } = Router as any;
 
@@ -24,29 +24,48 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOnline }) => {
   const navItems = [
-    { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-    { to: '/pomodoro', icon: <Timer size={20} />, label: 'Pomodoro' },
-    { to: '/active-recall', icon: <BrainCircuit size={20} />, label: 'Active Recall' },
-    { to: '/notes', icon: <StickyNote size={20} />, label: 'Notes' },
-    { to: '/music', icon: <Music2 size={20} />, label: 'Music' },
+    { to: '/dashboard',     icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    { to: '/pomodoro',      icon: <Timer size={20} />,           label: 'Pomodoro' },
+    { to: '/active-recall', icon: <BrainCircuit size={20} />,    label: 'Active Recall' },
+    { to: '/notes',         icon: <StickyNote size={20} />,      label: 'Notes' },
+    { to: '/music',         icon: <Music2 size={20} />,          label: 'Music' },
   ];
+
+  // ── Grove Level (from XP system) ──────────────────────────────────────────
+  const readGroveLevel = useCallback(
+    () => xpToLevel(loadXPBreakdown(user.uid).total).level,
+    [user.uid],
+  );
+  const [groveLevel, setGroveLevel] = useState(readGroveLevel);
+
+  useEffect(() => {
+    const refresh = () => setGroveLevel(readGroveLevel());
+    // 'xp-updated' fires in the same tab (dispatched by saveXPBreakdown).
+    // 'storage' fires when another tab writes to localStorage.
+    window.addEventListener('xp-updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('xp-updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [readGroveLevel]);
 
   return (
     <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-stone-200 hidden md:flex flex-col z-50">
+      {/* Logo */}
       <div className="p-6 flex items-center justify-between text-emerald-600">
         <div className="flex items-center gap-2">
           <Sprout size={32} />
           <span className="brand font-bold text-2xl tracking-tight">PomoGrove</span>
         </div>
-        <div title={isOnline ? "Synced to Cloud" : "Local Mode"}>
-          {isOnline ? (
-            <Cloud size={16} className="text-emerald-500" />
-          ) : (
-            <CloudOff size={16} className="text-amber-500" />
-          )}
+        <div title={isOnline ? 'Synced to Cloud' : 'Local Mode'}>
+          {isOnline
+            ? <Cloud size={16} className="text-emerald-500" />
+            : <CloudOff size={16} className="text-amber-500" />}
         </div>
       </div>
 
+      {/* Nav */}
       <nav className="flex-1 px-4 space-y-1 mt-4">
         {navItems.map((item) => (
           <NavLink
@@ -54,8 +73,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOnline }) => {
             to={item.to}
             className={({ isActive }: { isActive: boolean }) => `
               flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-              ${isActive 
-                ? 'bg-emerald-50 text-emerald-700 font-semibold' 
+              ${isActive
+                ? 'bg-emerald-50 text-emerald-700 font-semibold'
                 : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'}
             `}
           >
@@ -65,6 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOnline }) => {
         ))}
       </nav>
 
+      {/* User block */}
       <div className="p-4 border-t border-stone-100">
         {!isOnline && (
           <div className="mb-4 px-3 py-2 bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider rounded-lg flex items-center gap-2">
@@ -72,18 +92,23 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOnline }) => {
             Offline Mode Active
           </div>
         )}
+
         <div className="flex items-center gap-3 p-3 mb-4 rounded-xl bg-stone-50">
-          <img 
-            src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100`} 
-            alt="Profile" 
+          <img
+            src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100`}
+            alt="Profile"
             className="w-10 h-10 rounded-full border-2 border-emerald-200"
           />
           <div className="overflow-hidden">
             <p className="text-sm font-semibold truncate">{user.displayName}</p>
-            <p className="text-xs text-stone-500">Lvl {user.level}</p>
+            {/* Grove Level — sourced from XP system, not user.level */}
+            <p className="text-xs text-emerald-600 font-bold">
+              🌿 Grove Lvl {groveLevel}
+            </p>
           </div>
         </div>
-        <button 
+
+        <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-600 hover:bg-rose-50 transition-colors"
         >

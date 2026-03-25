@@ -13,11 +13,12 @@ import FloatingTimer from './components/FloatingTimer';
 import GlobalMusicPlayer from './components/GlobalMusicPlayer';
 import { UserProfile } from './types';
 import { logActivity } from './lib/activityLogger';
+import { addXP } from './lib/xpSystem';
 
 const { HashRouter, Routes, Route, Navigate, useLocation } = Router as any;
 const { onAuthStateChanged, signOut, getRedirectResult } = Auth as any;
 
-const DEMO_MODE = false;
+const DEMO_MODE = true;
 const FOCUS_TIME = DEMO_MODE ? 2 : 25 * 60;
 const BREAK_TIME = DEMO_MODE ? 2 : 5 * 60;
 const DEMO_LEVEL_INCREMENT = DEMO_MODE ? 50 : 1;
@@ -37,29 +38,55 @@ const AppContent: React.FC<{
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
 
   const toggleTimer = () => setIsActive(!isActive);
-  const resetTimer = useCallback(() => { setIsActive(false); setIsBreak(false); setTimeLeft(FOCUS_TIME); }, []);
+  const resetTimer = useCallback(() => {
+    setIsActive(false);
+    setIsBreak(false);
+    setTimeLeft(FOCUS_TIME);
+  }, []);
 
   useEffect(() => {
     let interval: any = null;
+
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     } else if (timeLeft === 0) {
       if (!isBreak) {
-        updateUser({ level: (user?.level || 0) + DEMO_LEVEL_INCREMENT, totalSessions: (user?.totalSessions || 0) + 1 });
+        // ── Focus session completed ──────────────────────────────────────
+        updateUser({
+          level: (user?.level || 0) + DEMO_LEVEL_INCREMENT,
+          totalSessions: (user?.totalSessions || 0) + 1,
+        });
+
         if (user) {
-          // Log pomodoro activity locally always
+          // Log activity entry — dispatches 'activity-updated' so
+          // ActivityCalendar refreshes the Recall Sets / Sessions counts.
           logActivity(user.uid, 'pomodoro');
 
-          // Also try syncing to API
+          // Award XP — dispatches 'xp-updated' so LevelProgressPanel
+          // animates the bar immediately in the same tab.
+          addXP(user.uid, { type: 'pomodoro' });
+
+          // Sync session to API (best-effort)
           fetch(`${API_BASE}/pomo/complete`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: user.uid }),
           }).catch(() => {});
         }
-        setIsBreak(true); setTimeLeft(BREAK_TIME);
-      } else { setIsBreak(false); setTimeLeft(FOCUS_TIME); }
-      try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch (e) {}
+        // ────────────────────────────────────────────────────────────────
+
+        setIsBreak(true);
+        setTimeLeft(BREAK_TIME);
+      } else {
+        setIsBreak(false);
+        setTimeLeft(FOCUS_TIME);
+      }
+
+      try {
+        new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
+      } catch (e) {}
     }
+
     return () => clearInterval(interval);
   }, [isActive, timeLeft, isBreak, updateUser, user]);
 
@@ -74,7 +101,7 @@ const AppContent: React.FC<{
       <main className={`flex-1 ${user ? 'md:ml-64' : ''} ${DEMO_MODE ? 'mt-6' : ''}`}>
         <Routes>
           <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
-          <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/" />} />
+          <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/dashboard" />} />
           <Route path="/pomodoro" element={user ? <Pomodoro user={user} timeLeft={timeLeft} isActive={isActive} isBreak={isBreak} toggleTimer={toggleTimer} resetTimer={resetTimer} /> : <Navigate to="/" />} />
           <Route path="/active-recall" element={user ? <ActiveRecall user={user} /> : <Navigate to="/" />} />
           <Route path="/notes" element={user ? <Notes user={user} /> : <Navigate to="/" />} />
@@ -83,7 +110,11 @@ const AppContent: React.FC<{
       </main>
       {user && (
         <>
-          <FloatingTimer timeLeft={timeLeft} isBreak={isBreak} isVisible={isActive && location.pathname !== '/pomodoro'} />
+          <FloatingTimer
+            timeLeft={timeLeft}
+            isBreak={isBreak}
+            isVisible={isActive && location.pathname !== '/pomodoro'}
+          />
           <GlobalMusicPlayer youtubeId={youtubeId} onSetYoutubeId={setYoutubeId} />
         </>
       )}
@@ -98,7 +129,12 @@ const App: React.FC = () => {
   const syncTimer = useRef<any>(null);
 
   const checkConnection = useCallback(async () => {
-    try { const res = await fetch(`${API_BASE}/health`); setIsOnline(res.ok); } catch (e) { setIsOnline(false); }
+    try {
+      const res = await fetch(`${API_BASE}/health`);
+      setIsOnline(res.ok);
+    } catch (e) {
+      setIsOnline(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -111,81 +147,82 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleRedirect = async () => {
       try {
-        console.log("Checking for redirect result...");
+        console.log('Checking for redirect result...');
         const result = await getRedirectResult(auth);
         if (result) {
-          console.log("Redirect result found:", result.user?.email);
-          // The onAuthStateChanged will handle the rest
+          console.log('Redirect result found:', result.user?.email);
         } else {
-          console.log("No redirect result");
+          console.log('No redirect result');
         }
       } catch (error) {
-        console.error("Redirect error:", error);
+        console.error('Redirect error:', error);
       }
     };
     handleRedirect();
   }, []);
 
   useEffect(() => {
-    console.log("Setting up auth state listener...");
+    console.log('Setting up auth state listener...');
     const unsubscribe = onAuthStateChanged(auth, async (fbUser: any) => {
-      console.log("Auth state changed. User:", fbUser?.email || "null");
-      
+      console.log('Auth state changed. User:', fbUser?.email || 'null');
+
       if (fbUser) {
         try {
           console.log(`Fetching user from API: ${API_BASE}/user/${fbUser.uid}`);
           const res = await fetch(`${API_BASE}/user/${fbUser.uid}`);
-          console.log("API response status:", res.status);
-          
+          console.log('API response status:', res.status);
+
           if (res.ok) {
             const profile = await res.json();
-            console.log("User profile loaded:", profile);
+            console.log('User profile loaded:', profile);
             setUser(profile);
             localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(profile));
           } else {
-            console.log("User not in DB, creating new profile...");
+            console.log('User not in DB, creating new profile...');
             const initialProfile: UserProfile = {
               uid: fbUser.uid,
               displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
               photoURL: fbUser.photoURL || '',
               bio: 'Studying in the grove',
-              level: 1, streak: 0, totalSessions: 0,
+              level: 1,
+              streak: 0,
+              totalSessions: 0,
             };
-            
-            const createRes = await fetch(`${API_BASE}/user`, { 
-              method: 'POST', 
-              headers: { 'Content-Type': 'application/json' }, 
-              body: JSON.stringify(initialProfile) 
+
+            const createRes = await fetch(`${API_BASE}/user`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(initialProfile),
             });
-            
-            console.log("Create user response:", createRes.status);
-            
+
+            console.log('Create user response:', createRes.status);
+
             if (createRes.ok) {
               const savedProfile = await createRes.json();
-              console.log("New profile created:", savedProfile);
+              console.log('New profile created:', savedProfile);
               setUser(savedProfile);
               localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(savedProfile));
             } else {
-              console.log("Failed to create in DB, using local profile");
+              console.log('Failed to create in DB, using local profile');
               setUser(initialProfile);
               localStorage.setItem(`user_${fbUser.uid}`, JSON.stringify(initialProfile));
             }
           }
         } catch (e) {
-          console.error("Error syncing user:", e);
+          console.error('Error syncing user:', e);
           const localData = localStorage.getItem(`user_${fbUser.uid}`);
           if (localData) {
-            console.log("Using cached user data");
+            console.log('Using cached user data');
             setUser(JSON.parse(localData));
           } else {
-            console.log("Creating fallback profile");
+            console.log('Creating fallback profile');
             const fallbackProfile = {
-              uid: fbUser.uid, 
+              uid: fbUser.uid,
               displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
-              photoURL: fbUser.photoURL || '', 
-              bio: 'Studying in the grove', 
-              level: 1, 
-              streak: 0, 
+              photoURL: fbUser.photoURL || '',
+              bio: 'Studying in the grove',
+              level: 1,
+              streak: 0,
               totalSessions: 0,
             };
             setUser(fallbackProfile);
@@ -194,53 +231,70 @@ const App: React.FC = () => {
 
         // ── Log login activity ──
         logActivity(fbUser.uid, 'login');
-
-      } else { 
-        console.log("No user logged in");
-        setUser(null); 
+      } else {
+        console.log('No user logged in');
+        setUser(null);
       }
-      
-      console.log("Setting loading to false");
+
+      console.log('Setting loading to false');
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   const handleLogin = (userData: UserProfile) => {
-    console.log("handleLogin called with:", userData);
+    console.log('handleLogin called with:', userData);
     setUser(userData);
     localStorage.setItem(`user_${userData.uid}`, JSON.stringify(userData));
     logActivity(userData.uid, 'login');
   };
 
-  const handleLogout = async () => { 
-    console.log("Logging out...");
-    await signOut(auth); 
-    setUser(null); 
+  const handleLogout = async () => {
+    console.log('Logging out...');
+    await signOut(auth);
+    setUser(null);
   };
 
-  const updateUser = useCallback(async (updated: Partial<UserProfile>) => {
-    if (!user) return;
-    const newUser = { ...user, ...updated };
-    setUser(newUser);
-    localStorage.setItem(`user_${user.uid}`, JSON.stringify(newUser));
-    try {
-      await fetch(`${API_BASE}/user/${user.uid}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_name: newUser.displayName, bio: newUser.bio, level: newUser.level, total_sessions: newUser.totalSessions }),
-      });
-    } catch (e) { console.warn('Sync failed, saved locally.'); }
-  }, [user]);
-
-  if (loading) return (
-    <div className="h-screen w-screen flex items-center justify-center bg-emerald-50">
-      <div className="animate-bounce text-emerald-600 text-4xl font-bold tracking-tight">PomoGrove</div>
-    </div>
+  const updateUser = useCallback(
+    async (updated: Partial<UserProfile>) => {
+      if (!user) return;
+      const newUser = { ...user, ...updated };
+      setUser(newUser);
+      localStorage.setItem(`user_${user.uid}`, JSON.stringify(newUser));
+      try {
+        await fetch(`${API_BASE}/user/${user.uid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            display_name: newUser.displayName,
+            bio: newUser.bio,
+            level: newUser.level,
+            total_sessions: newUser.totalSessions,
+          }),
+        });
+      } catch (e) {
+        console.warn('Sync failed, saved locally.');
+      }
+    },
+    [user],
   );
+
+  if (loading)
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-emerald-50">
+        <div className="animate-bounce text-emerald-600 text-4xl font-bold tracking-tight">PomoGrove</div>
+      </div>
+    );
 
   return (
     <HashRouter>
-      <AppContent user={user} isOnline={isOnline} updateUser={updateUser} handleLogout={handleLogout} handleLogin={handleLogin} />
+      <AppContent
+        user={user}
+        isOnline={isOnline}
+        updateUser={updateUser}
+        handleLogout={handleLogout}
+        handleLogin={handleLogin}
+      />
     </HashRouter>
   );
 };

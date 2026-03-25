@@ -253,3 +253,76 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Pomogrove server running on port ${PORT}`);
 });
+
+// ─── Playlists ───────────────────────────────────────────────────────────────
+app.get('/api/playlists/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const playlists = await pool.query(
+      'SELECT * FROM playlists WHERE user_uid = $1 ORDER BY created_at DESC',
+      [uid]
+    );
+    const result = await Promise.all(
+      playlists.rows.map(async (pl) => {
+        const items = await pool.query(
+          'SELECT * FROM playlist_items WHERE playlist_id = $1 ORDER BY created_at ASC',
+          [pl.id]
+        );
+        return { id: pl.id, name: pl.name, items: items.rows };
+      })
+    );
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+app.post('/api/playlists/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const { name } = req.body;
+    const count = await pool.query('SELECT COUNT(*) FROM playlists WHERE user_uid = $1', [uid]);
+    if (parseInt(count.rows[0].count) >= 10)
+      return res.status(400).json({ error: 'Max 10 playlists reached' });
+    const result = await pool.query(
+      'INSERT INTO playlists (user_uid, name) VALUES ($1, $2) RETURNING *',
+      [uid, name]
+    );
+    res.status(201).json({ ...result.rows[0], items: [] });
+  } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+app.delete('/api/playlists/:uid/:playlistId', async (req, res) => {
+  try {
+    const { uid, playlistId } = req.params;
+    await pool.query('DELETE FROM playlists WHERE id = $1 AND user_uid = $2', [playlistId, uid]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+app.post('/api/playlists/:uid/:playlistId/items', async (req, res) => {
+  try {
+    const { uid, playlistId } = req.params;
+    const { title, youtubeId } = req.body;
+    const check = await pool.query(
+      'SELECT id FROM playlists WHERE id = $1 AND user_uid = $2', [playlistId, uid]
+    );
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Forbidden' });
+    const count = await pool.query(
+      'SELECT COUNT(*) FROM playlist_items WHERE playlist_id = $1', [playlistId]
+    );
+    if (parseInt(count.rows[0].count) >= 20)
+      return res.status(400).json({ error: 'Max 20 items per playlist' });
+    const result = await pool.query(
+      'INSERT INTO playlist_items (playlist_id, title, youtube_id) VALUES ($1, $2, $3) RETURNING *',
+      [playlistId, title, youtubeId]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+app.delete('/api/playlists/:uid/:playlistId/items/:itemId', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    await pool.query('DELETE FROM playlist_items WHERE id = $1', [itemId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});

@@ -11,6 +11,9 @@ export function logActivity(uid: string, event: ActivityEvent) {
     const entries: { ts: string; event: ActivityEvent }[] = raw ? JSON.parse(raw) : [];
     entries.push({ ts: new Date().toISOString(), event });
     localStorage.setItem(ACTIVITY_KEY(uid), JSON.stringify(entries));
+    // Notify same-tab listeners (ActivityCalendar) that the log has changed.
+    // The native 'storage' event only fires in *other* tabs, so we need this.
+    window.dispatchEvent(new Event('activity-updated'));
   } catch {}
 }
 

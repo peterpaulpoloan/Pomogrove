@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
  "scripts": {
-  "dev": "vite",
-  "build": " npx vite build",
-  "preview": "vite preview"
-},
+    "dev": "vite",
+    "server": "node --loader ts-node/esm api/server.ts",
+    "build": "npx vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "chart.js": "^4.5.1",
     "cors": "^2.8.6",
