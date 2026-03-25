@@ -18,7 +18,7 @@ import { addXP } from './lib/xpSystem';
 const { HashRouter, Routes, Route, Navigate, useLocation } = Router as any;
 const { onAuthStateChanged, signOut, getRedirectResult } = Auth as any;
 
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 const FOCUS_TIME = DEMO_MODE ? 2 : 25 * 60;
 const BREAK_TIME = DEMO_MODE ? 2 : 5 * 60;
 const DEMO_LEVEL_INCREMENT = DEMO_MODE ? 50 : 1;
