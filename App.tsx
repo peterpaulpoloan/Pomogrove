@@ -22,7 +22,7 @@ const DEMO_MODE = false;
 const FOCUS_TIME = DEMO_MODE ? 2 : 25 * 60;
 const BREAK_TIME = DEMO_MODE ? 2 : 5 * 60;
 const DEMO_LEVEL_INCREMENT = DEMO_MODE ? 50 : 1;
-const API_BASE = (import.meta.env as any).VITE_API_BASE || 'http://localhost:5000/api';
+const API_BASE = (import.meta.env as any).VITE_API_BASE || 'https://pomogrove-beta.vercel.app/';
 
 const AppContent: React.FC<{
   user: UserProfile | null;
