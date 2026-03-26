@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Search, FileText, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Search, FileText, Calendar, Loader2, X, Pencil, Check } from 'lucide-react';
 import { Note } from '../types';
 import { UserProfile } from '../types';
 import { logActivity, ActivityEvent } from '../lib/activityLogger';
@@ -11,7 +11,6 @@ interface NotesProps {
   user: UserProfile;
 }
 
-/** Count words in a string (splits on whitespace, filters empty tokens) */
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -25,7 +24,12 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
   const [newContent, setNewContent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load notes from DB on mount
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
   useEffect(() => {
     const fetchNotes = async () => {
       setIsLoading(true);
@@ -52,8 +56,6 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
     }
     setIsSaving(true);
 
-    // Calculate word count from both title and content so XP reflects
-    // the full text the user wrote.
     const wordCount = countWords(`${newTitle} ${newContent}`);
 
     try {
@@ -70,7 +72,6 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
         setNotes([saved, ...notes]);
       }
     } catch (err) {
-      // Optimistic offline fallback
       const note: Note = {
         id: Date.now().toString(),
         title: newTitle || 'Untitled Note',
@@ -79,13 +80,8 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
       };
       setNotes([note, ...notes]);
     } finally {
-      // ── Log activity + award XP ──────────────────────────────────────
-      // Always runs whether the server call succeeded or fell back offline.
-      // logActivity dispatches 'activity-updated' so ActivityCalendar refreshes.
-      // addXP dispatches 'xp-updated' so LevelProgressPanel refreshes.
       logActivity(user.uid, 'note' as ActivityEvent);
       addXP(user.uid, { type: 'note', wordCount });
-      // ────────────────────────────────────────────────────────────────
 
       setNewTitle('');
       setNewContent('');
@@ -94,8 +90,46 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
     }
   };
 
+  const openEdit = (note: Note) => {
+    setEditingId(note.id);
+    setEditTitle(note.title);
+    setEditContent(note.content);
+  };
+
+  const closeEdit = () => {
+    setEditingId(null);
+    setEditTitle('');
+    setEditContent('');
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setIsUpdating(true);
+
+    const updated: Note = {
+      ...notes.find((n) => n.id === editingId)!,
+      title: editTitle || 'Untitled Note',
+      content: editContent,
+    };
+
+    // Optimistic update
+    setNotes(notes.map((n) => (n.id === editingId ? updated : n)));
+
+    try {
+      await fetch(`${API_BASE}/notes/${user.uid}/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: updated.title, content: updated.content }),
+      });
+    } catch (err) {
+      console.warn('Update sync failed.');
+    } finally {
+      setIsUpdating(false);
+      closeEdit();
+    }
+  };
+
   const deleteNote = async (id: string) => {
-    // Optimistic UI — remove immediately
     setNotes(notes.filter((n) => n.id !== id));
     try {
       await fetch(`${API_BASE}/notes/${user.uid}/${id}`, { method: 'DELETE' });
@@ -109,6 +143,9 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
       n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       n.content.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+
+  const xpPreview = (title: string, content: string) =>
+    Math.max(1, Math.round((countWords(`${title} ${content}`) / 500) * 40));
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8">
@@ -136,10 +173,26 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
         </div>
       </div>
 
+      {/* ── New Note Modal ─────────────────────────────────────────────── */}
       {isAdding && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsAdding(false); }}
+        >
           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-4">
+              {/* Header row with close button */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-widest text-stone-400">New Note</span>
+                <button
+                  onClick={() => setIsAdding(false)}
+                  className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors"
+                  title="Discard"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
               <input
                 className="w-full text-3xl font-bold border-none outline-none placeholder:text-stone-300"
                 placeholder="Note Title"
@@ -147,19 +200,14 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
                 onChange={(e) => setNewTitle(e.target.value)}
                 autoFocus
               />
-              {/* Live word count so the user knows how much XP they're earning */}
-              <div className="flex items-center justify-between">
-                <textarea
-                  className="w-full h-80 text-lg border-none outline-none resize-none placeholder:text-stone-300 text-stone-600"
-                  placeholder="Start typing your thoughts..."
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                />
-              </div>
-              <p className="text-xs text-stone-400 text-right -mt-4">
-                {countWords(`${newTitle} ${newContent}`)} words
-                {' · '}
-                +{Math.max(1, Math.round((countWords(`${newTitle} ${newContent}`) / 500) * 40))} XP on save
+              <textarea
+                className="w-full h-80 text-lg border-none outline-none resize-none placeholder:text-stone-300 text-stone-600"
+                placeholder="Start typing your thoughts..."
+                value={newContent}
+                onChange={(e) => setNewContent(e.target.value)}
+              />
+              <p className="text-xs text-stone-400 text-right">
+                {countWords(`${newTitle} ${newContent}`)} words · +{xpPreview(newTitle, newContent)} XP on save
               </p>
             </div>
             <div className="p-6 bg-stone-50 flex justify-end gap-3 border-t border-stone-100">
@@ -182,6 +230,62 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
         </div>
       )}
 
+      {/* ── Edit Note Modal ────────────────────────────────────────────── */}
+      {editingId && (
+        <div
+          className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) closeEdit(); }}
+        >
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+            <div className="p-8 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-500">Editing Note</span>
+                <button
+                  onClick={closeEdit}
+                  className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors"
+                  title="Cancel"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <input
+                className="w-full text-3xl font-bold border-none outline-none placeholder:text-stone-300"
+                placeholder="Note Title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                autoFocus
+              />
+              <textarea
+                className="w-full h-80 text-lg border-none outline-none resize-none placeholder:text-stone-300 text-stone-600"
+                placeholder="Start typing your thoughts..."
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+              />
+              <p className="text-xs text-stone-400 text-right">
+                {countWords(`${editTitle} ${editContent}`)} words
+              </p>
+            </div>
+            <div className="p-6 bg-stone-50 flex justify-end gap-3 border-t border-stone-100">
+              <button
+                onClick={closeEdit}
+                className="px-6 py-2.5 font-bold text-stone-500 hover:bg-stone-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={isUpdating}
+                className="px-8 py-2.5 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-60"
+              >
+                {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-32 text-stone-400">
           <Loader2 size={32} className="animate-spin" />
@@ -197,12 +301,23 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
                 <div className="p-2 bg-stone-100 text-stone-500 rounded-lg group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
                   <FileText size={20} />
                 </div>
-                <button
-                  onClick={() => deleteNote(note.id)}
-                  className="p-2 text-stone-300 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 size={18} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Edit button */}
+                  <button
+                    onClick={() => openEdit(note)}
+                    className="p-2 text-stone-300 hover:text-emerald-600 transition-colors"
+                    title="Edit note"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => deleteNote(note.id)}
+                    className="p-2 text-stone-300 hover:text-rose-600 transition-colors"
+                    title="Delete note"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
 
               <h4 className="text-xl font-bold mb-2 group-hover:text-emerald-900">{note.title}</h4>
@@ -213,7 +328,6 @@ const Notes: React.FC<NotesProps> = ({ user }) => {
                   <Calendar size={12} />
                   {new Date(note.createdAt).toLocaleDateString()}
                 </span>
-                {/* Word count badge on each card */}
                 <span className="text-xs text-stone-300 font-medium">
                   {countWords(`${note.title} ${note.content}`)}w
                 </span>
