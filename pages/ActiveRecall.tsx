@@ -69,9 +69,15 @@ No markdown, no extra text.`,
     const text = data.content?.[0]?.text || '{}';
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     return { correct: !!parsed.correct, feedback: parsed.feedback || '' };
+  // AFTER
   } catch {
     const norm = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '');
-    const correct = norm(userAnswer).includes(norm(correctAnswer)) || norm(correctAnswer).includes(norm(userAnswer));
+    const ua = norm(userAnswer);
+    const ca = norm(correctAnswer);
+    // Require the user's answer to be at least 60% the length of the correct answer
+    // AND the correct answer must contain the user's answer (not just a fragment)
+    const longEnough = ua.length >= Math.ceil(ca.length * 0.6);
+    const correct = longEnough && ca.includes(ua);
     return { correct, feedback: correct ? 'Answer matches.' : 'Answer does not match.' };
   }
 }

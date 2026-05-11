@@ -24,6 +24,50 @@ const BREAK_TIME = DEMO_MODE ? 2 : 5 * 60;
 const DEMO_LEVEL_INCREMENT = DEMO_MODE ? 50 : 1;
 const API_BASE = (import.meta.env as any).VITE_API_BASE || 'https://pomogrove-beta.vercel.app/';
 
+// ── Logout Confirmation Dialog ─────────────────────────────────────────────
+const LogoutDialog: React.FC<{
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ onConfirm, onCancel }) => (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/40 backdrop-blur-sm"
+    onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+  >
+    <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4 space-y-5">
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-rose-50 rounded-2xl mb-1">
+          <span className="text-2xl">🌿</span>
+        </div>
+        <h2 className="text-xl font-black text-stone-900">Leave the grove?</h2>
+        <p className="text-stone-500 text-sm leading-relaxed">
+          Your progress is saved. You can come back anytime.
+        </p>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold text-sm hover:bg-stone-200 transition-colors"
+        >
+          Stay
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-3 bg-rose-500 text-white rounded-xl font-bold text-sm hover:bg-rose-600 transition-colors"
+        >
+          Log out
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Logout Toast ───────────────────────────────────────────────────────────
+const LogoutToast: React.FC = () => (
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 bg-stone-900 text-white px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold animate-fade-in-up">
+    <span className="text-base">👋</span> Logging you out…
+  </div>
+);
+
 const AppContent: React.FC<{
   user: UserProfile | null;
   isOnline: boolean;
@@ -36,6 +80,20 @@ const AppContent: React.FC<{
   const [isActive, setIsActive] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
+
+  // ── Logout dialog + toast state ──
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showLogoutToast, setShowLogoutToast] = useState(false);
+
+  const requestLogout = () => setShowLogoutDialog(true);
+
+  const confirmLogout = async () => {
+    setShowLogoutDialog(false);
+    setShowLogoutToast(true);
+    // Small delay so the user sees the toast before the screen clears
+    await new Promise((r) => setTimeout(r, 900));
+    handleLogout();
+  };
 
   const toggleTimer = () => setIsActive(!isActive);
   const resetTimer = useCallback(() => {
@@ -51,29 +109,21 @@ const AppContent: React.FC<{
       interval = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     } else if (timeLeft === 0) {
       if (!isBreak) {
-        // ── Focus session completed ──────────────────────────────────────
         updateUser({
           level: (user?.level || 0) + DEMO_LEVEL_INCREMENT,
           totalSessions: (user?.totalSessions || 0) + 1,
         });
 
         if (user) {
-          // Log activity entry — dispatches 'activity-updated' so
-          // ActivityCalendar refreshes the Recall Sets / Sessions counts.
           logActivity(user.uid, 'pomodoro');
-
-          // Award XP — dispatches 'xp-updated' so LevelProgressPanel
-          // animates the bar immediately in the same tab.
           addXP(user.uid, { type: 'pomodoro' });
 
-          // Sync session to API (best-effort)
           fetch(`${API_BASE}/pomo/complete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: user.uid }),
           }).catch(() => {});
         }
-        // ────────────────────────────────────────────────────────────────
 
         setIsBreak(true);
         setTimeLeft(BREAK_TIME);
@@ -97,7 +147,27 @@ const AppContent: React.FC<{
           🎮 DEMO MODE — 1s cycles, +{DEMO_LEVEL_INCREMENT} levels per session. Set DEMO_MODE = false before deploying.
         </div>
       )}
-      {user && <Sidebar user={user} onLogout={handleLogout} isOnline={isOnline} />}
+
+      {/* Logout confirmation dialog */}
+      {showLogoutDialog && (
+        <LogoutDialog
+          onConfirm={confirmLogout}
+          onCancel={() => setShowLogoutDialog(false)}
+        />
+      )}
+
+      {/* Logout toast */}
+      {showLogoutToast && <LogoutToast />}
+
+      {/* Pass requestLogout (shows dialog) instead of handleLogout (fires immediately) */}
+      {user && (
+        <Sidebar
+          user={user}
+          onLogout={requestLogout}
+          isOnline={isOnline}
+        />
+      )}
+
       <main className={`flex-1 ${user ? 'md:ml-64' : ''} ${DEMO_MODE ? 'mt-6' : ''}`}>
         <Routes>
           <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
@@ -108,6 +178,7 @@ const AppContent: React.FC<{
           <Route path="/music" element={user ? <Music onSetYoutubeId={setYoutubeId} currentYoutubeId={youtubeId} /> : <Navigate to="/" />} />
         </Routes>
       </main>
+
       {user && (
         <>
           <FloatingTimer
@@ -143,7 +214,6 @@ const App: React.FC = () => {
     return () => clearInterval(syncTimer.current);
   }, [checkConnection]);
 
-  // Handle Google redirect result FIRST, before onAuthStateChanged
   useEffect(() => {
     const handleRedirect = async () => {
       try {
@@ -229,7 +299,6 @@ const App: React.FC = () => {
           }
         }
 
-        // ── Log login activity ──
         logActivity(fbUser.uid, 'login');
       } else {
         console.log('No user logged in');
