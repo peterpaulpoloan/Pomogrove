@@ -3,13 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
- "scripts": {
+  "scripts": {
     "dev": "vite",
-    "server": "node --loader ts-node/esm api/server.ts",
-    "build": "npx vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "chart.js": "^4.5.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.19.19",
     "@types/pg": "^8.16.0",
     "@vitejs/plugin-react": "^5.0.0",
     "ts-node": "^10.9.2",

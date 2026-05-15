@@ -1,0 +1,19 @@
+{
+  "rewrites": [
+    { "source": "/api/user/:uid", "destination": "/api/user?uid=:uid" },
+    { "source": "/api/user", "destination": "/api/user" },
+    { "source": "/api/pomo/complete", "destination": "/api/pomo" },
+    { "source": "/api/stats/:uid", "destination": "/api/stats?uid=:uid" },
+    { "source": "/api/notes/:uid/:noteId", "destination": "/api/notes?uid=:uid&noteId=:noteId" },
+    { "source": "/api/notes/:uid", "destination": "/api/notes?uid=:uid" },
+    { "source": "/api/quizzes/:uid/:quizId/cards/:cardId", "destination": "/api/quizzes?uid=:uid&quizId=:quizId&cardId=:cardId" },
+    { "source": "/api/quizzes/:uid/:quizId/cards", "destination": "/api/quizzes?uid=:uid&quizId=:quizId&cards=1" },
+    { "source": "/api/quizzes/:uid/:quizId", "destination": "/api/quizzes?uid=:uid&quizId=:quizId" },
+    { "source": "/api/quizzes/:uid", "destination": "/api/quizzes?uid=:uid" },
+    { "source": "/api/playlists/:uid/:playlistId/items/:itemId", "destination": "/api/playlists?uid=:uid&playlistId=:playlistId&itemId=:itemId" },
+    { "source": "/api/playlists/:uid/:playlistId/items", "destination": "/api/playlists?uid=:uid&playlistId=:playlistId&itemId=new" },
+    { "source": "/api/playlists/:uid/:playlistId", "destination": "/api/playlists?uid=:uid&playlistId=:playlistId" },
+    { "source": "/api/playlists/:uid", "destination": "/api/playlists?uid=:uid" },
+    { "source": "/api/health", "destination": "/api/health" }
+  ]
+}
