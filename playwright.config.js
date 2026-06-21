@@ -6,10 +6,10 @@ dotenv.config({ path: '.env.local' });
 export default defineConfig({
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'https://pomogrove-beta.vercel.app',
     reuseExistingServer: true,
   },
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'https://pomogrove-beta.vercel.app',
   },
 });
