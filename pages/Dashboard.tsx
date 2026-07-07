@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { UserProfile } from '../types';
 import ActivityCalendar from '../components/ActivityCalendar';
 import { Award, Target, Flame, Edit3, Save } from 'lucide-react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface DashboardProps {
   user: UserProfile;
@@ -12,10 +13,36 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempBio, setTempBio] = useState(user.bio);
   const [tempName, setTempName] = useState(user.displayName);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
     updateUser({ bio: tempBio, displayName: tempName });
     setIsEditing(false);
+  };
+
+  const handlePhotoClick = () => {
+    if (isEditing) fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const storage = getStorage();
+      const photoRef = ref(storage, `profile-photos/${user.uid}`);
+      await uploadBytes(photoRef, file);
+      const url = await getDownloadURL(photoRef);
+      updateUser({ photoURL: url });
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+    } finally {
+      setUploading(false);
+      // allow re-selecting the same file later
+      e.target.value = '';
+    }
   };
 
   return (
@@ -23,17 +50,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
       {/* Header Profile Section */}
       <section className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm">
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-          <div className="relative group flex-shrink-0">
+          <div
+            className={`relative group flex-shrink-0 ${isEditing ? 'cursor-pointer' : ''}`}
+            onClick={handlePhotoClick}
+          >
             <img 
               src={user.photoURL || '/defaultpfp.png'}
               alt="Profile"
               className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-emerald-100 shadow-lg"
             />
             {isEditing && (
-              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer">
-                <Edit3 className="text-white" />
+              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                {uploading ? (
+                  <span className="text-white text-xs font-medium">Uploading...</span>
+                ) : (
+                  <Edit3 className="text-white" />
+                )}
               </div>
             )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
           </div>
 
           <div className="flex-1 min-w-0 w-full text-center md:text-left">

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { Sprout, AlertCircle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Sprout, AlertCircle } from 'lucide-react';
 import * as Auth from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
 const {
   signInWithPopup,
   signInWithRedirect,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } = Auth as any;
 
@@ -15,17 +13,9 @@ interface LandingProps {
   onLogin: (user: any) => void;
 }
 
-type AuthMode = 'login' | 'register';
-
 const Landing: React.FC<LandingProps> = () => {
-  const [error, setError]       = useState<string | null>(null);
-  const [loading, setLoading]   = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
-
-  // Email/password form state
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
+  const [error, setError]     = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // ── Google sign-in ─────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
@@ -49,39 +39,6 @@ const Landing: React.FC<LandingProps> = () => {
       setError(err.message || 'An error occurred during authentication.');
       setLoading(false);
     }
-  };
-
-  // ── Email / password sign-in or register ───────────────────────────────────
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      if (authMode === 'login') {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
-      // onAuthStateChanged in App.tsx handles the rest
-    } catch (err: any) {
-      setError(friendlyError(err.code) || err.message);
-      setLoading(false);
-    }
-  };
-
-  // ── Human-readable Firebase error codes ───────────────────────────────────
-  const friendlyError = (code: string): string | null => {
-    const map: Record<string, string> = {
-      'auth/user-not-found':        'No account found with that email.',
-      'auth/wrong-password':        'Incorrect password. Please try again.',
-      'auth/invalid-email':         'That doesn\'t look like a valid email address.',
-      'auth/email-already-in-use':  'An account with that email already exists.',
-      'auth/weak-password':         'Password must be at least 6 characters.',
-      'auth/too-many-requests':     'Too many attempts. Please wait a moment and try again.',
-      'auth/network-request-failed':'Network error. Check your connection and try again.',
-      'auth/invalid-credential':    'Incorrect email or password.',
-    };
-    return map[code] ?? null;
   };
 
   return (
@@ -117,9 +74,7 @@ const Landing: React.FC<LandingProps> = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 mb-2">Welcome to PomoGrove</h2>
             <p className="text-stone-500 text-sm">
-              {authMode === 'login'
-                ? 'Sign in to start growing your productivity tree.'
-                : 'Create an account to get started.'}
+              Sign in to start growing your productivity tree.
             </p>
           </div>
 
@@ -157,92 +112,6 @@ const Landing: React.FC<LandingProps> = () => {
               </>
             )}
           </button>
-
-          {/* Divider */}
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-stone-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-stone-50 text-stone-400 text-center">or continue with email</span>
-            </div>
-          </div>
-
-          {/* Email / password form */}
-          <form onSubmit={handleEmailAuth} className="space-y-3" data-testid="email-auth-form">
-
-            {/* Email */}
-            <div className="relative">
-              <Mail
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
-              />
-              <input
-                data-testid="email-input"
-                type="email"
-                placeholder="Email address"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full pl-9 pr-4 py-3 bg-white border-2 border-stone-200 rounded-xl text-stone-800
-                  placeholder-stone-400 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-              />
-            </div>
-
-            {/* Password */}
-            <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
-              />
-              <input
-                data-testid="password-input"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full pl-9 pr-10 py-3 bg-white border-2 border-stone-200 rounded-xl text-stone-800
-                  placeholder-stone-400 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-              />
-              <button
-                type="button"
-                data-testid="toggle-password"
-                onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {/* Submit */}
-            <button
-              data-testid="email-submit-btn"
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 bg-emerald-600 text-white rounded-xl font-bold
-                hover:bg-emerald-700 transition-colors shadow-lg
-                ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              {loading
-                ? <div className="w-5 h-5 border-2 border-emerald-300 border-t-white rounded-full animate-spin mx-auto" />
-                : authMode === 'login' ? 'Sign in' : 'Create account'
-              }
-            </button>
-          </form>
-
-          {/* Toggle login ↔ register */}
-          <p className="text-center text-sm text-stone-500 mt-4">
-            {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <button
-              data-testid="toggle-auth-mode"
-              onClick={() => { setAuthMode(m => m === 'login' ? 'register' : 'login'); setError(null); }}
-              className="text-emerald-600 font-semibold hover:underline"
-            >
-              {authMode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
 
           <p className="text-xs text-stone-400 text-center mt-6">
             By signing in, you agree to our Terms of Service and Privacy Policy.
