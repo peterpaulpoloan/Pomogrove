@@ -25,7 +25,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
           <div className="relative group flex-shrink-0">
             <img 
-              src={user.photoURL || `https://picsum.photos/seed/${user.uid}/150`}
+              src={user.photoURL || '/defaultpfp.png'}
               alt="Profile"
               className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-emerald-100 shadow-lg"
             />

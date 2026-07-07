@@ -253,7 +253,7 @@ const App: React.FC = () => {
             const initialProfile: UserProfile = {
               uid: fbUser.uid,
               displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
-              photoURL: fbUser.photoURL || '',
+              photoURL: fbUser.photoURL || '/defaultpfp.png',
               bio: 'Studying in the grove',
               level: 1,
               streak: 0,
@@ -290,7 +290,7 @@ const App: React.FC = () => {
             const fallbackProfile = {
               uid: fbUser.uid,
               displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
-              photoURL: fbUser.photoURL || '',
+              photoURL: fbUser.photoURL || '/defaultpfp.png',
               bio: 'Studying in the grove',
               level: 1,
               streak: 0,

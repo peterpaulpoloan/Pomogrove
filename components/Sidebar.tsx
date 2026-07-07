@@ -145,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, isOnline }) => {
 
           <div className="flex items-center gap-3 p-3 mb-4 rounded-xl bg-stone-50">
             <img
-              src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100`}
+              src={user.photoURL || '/defaultpfp.png'}
               alt="Profile"
               className="w-10 h-10 rounded-full border-2 border-emerald-200"
             />
