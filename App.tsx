@@ -168,7 +168,7 @@ const AppContent: React.FC<{
         />
       )}
 
-      <main className={`flex-1 ${user ? 'md:ml-64' : ''} ${DEMO_MODE ? 'mt-6' : ''}`}>
+      <main className={`flex-1 ${user ? 'pt-16 md:pt-0 md:ml-64' : ''} ${DEMO_MODE ? 'mt-6' : ''}`}>
         <Routes>
           <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/dashboard" />} />

@@ -463,16 +463,16 @@ const ActiveRecall: React.FC<ActiveRecallProps> = ({ user }) => {
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8">
       {showTips && <CsvTipsModal onClose={() => setShowTips(false)} />}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-3xl font-bold text-stone-900">Active Recall</h2>
           <p className="text-stone-500 font-medium">Spaced repetition flashcard decks.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto">
           {/* CSV Tips button */}
           <button
             onClick={() => setShowTips(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl font-bold text-sm hover:bg-amber-100 transition-all"
+            className="flex flex-1 md:flex-none items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl font-bold text-sm hover:bg-amber-100 transition-all"
             title="Tips on uploading CSV"
           >
             <HelpCircle size={15} />
@@ -480,7 +480,7 @@ const ActiveRecall: React.FC<ActiveRecallProps> = ({ user }) => {
           </button>
           <button
             onClick={() => setIsCreatingDeck(true)}
-            className="flex items-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-stone-800 transition-all"
+            className="flex flex-1 md:flex-none items-center justify-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-stone-800 transition-all"
           >
             <Plus size={20} /> New Deck
           </button>
@@ -555,25 +555,25 @@ const ActiveRecall: React.FC<ActiveRecallProps> = ({ user }) => {
       {showTips && <CsvTipsModal onClose={() => setShowTips(false)} />}
 
       <div className="flex items-center gap-3">
-        <button onClick={() => setView('decks')} className="p-2 rounded-xl hover:bg-stone-100 transition-colors">
+        <button onClick={() => setView('decks')} className="p-2 rounded-xl hover:bg-stone-100 transition-colors flex-shrink-0">
           <ChevronLeft size={22} />
         </button>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold text-stone-900">{activeQuiz?.title}</h2>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl font-bold text-stone-900 truncate">{activeQuiz?.title}</h2>
           <p className="text-stone-400 text-sm">{activeQuiz?.cards.length ?? 0} cards</p>
         </div>
         {/* CSV Tips inline */}
         <button
           onClick={() => setShowTips(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl font-bold text-xs hover:bg-amber-100 transition-all"
+          className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl font-bold text-xs hover:bg-amber-100 transition-all flex-shrink-0"
         >
-          <HelpCircle size={13} /> CSV Tips
+          <HelpCircle size={13} /> <span className="hidden sm:inline">CSV Tips</span>
         </button>
       </div>
 
       {/* ── CSV Import Section ── */}
       <div className="bg-white p-6 rounded-2xl border-2 border-blue-100 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 className="font-bold text-stone-700 flex items-center gap-2">
             <Upload size={16} className="text-blue-500" /> Import from CSV
           </h3>
@@ -629,7 +629,7 @@ const ActiveRecall: React.FC<ActiveRecallProps> = ({ user }) => {
         {/* Preview */}
         {csvPreview.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">
                 {csvPreview.length} card{csvPreview.length !== 1 ? 's' : ''} ready to import
               </p>
@@ -725,12 +725,12 @@ const ActiveRecall: React.FC<ActiveRecallProps> = ({ user }) => {
     return (
       <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => setView('decks')} className="p-2 rounded-xl hover:bg-stone-100 transition-colors"><ChevronLeft size={22} /></button>
-          <div className="flex-1">
-            <p className="text-sm text-stone-400 font-medium">{activeQuiz?.title}</p>
+          <button onClick={() => setView('decks')} className="p-2 rounded-xl hover:bg-stone-100 transition-colors flex-shrink-0"><ChevronLeft size={22} /></button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-stone-400 font-medium truncate">{activeQuiz?.title}</p>
             <p className="text-xs text-stone-400">Card {quizIndex + 1} of {quizQueue.length}</p>
           </div>
-          <span className="text-sm font-bold text-stone-500">{Math.round(progress)}%</span>
+          <span className="text-sm font-bold text-stone-500 flex-shrink-0">{Math.round(progress)}%</span>
         </div>
         <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />

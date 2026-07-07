@@ -217,7 +217,7 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all capitalize flex items-center gap-2 ${
+            className={`px-4 sm:px-6 py-2.5 rounded-xl font-bold text-sm transition-all capitalize flex items-center gap-2 ${
               tab === t ? 'bg-white text-stone-900 shadow-md' : 'text-stone-400 hover:text-stone-600'
             }`}
           >
@@ -229,12 +229,12 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
 
       {/* ── Sync Tab ──────────────────────────────────────────────────────── */}
       {tab === 'sync' && (
-        <div className="bg-white rounded-[3rem] p-12 shadow-2xl border border-stone-100 text-center space-y-8">
-          <div className="inline-block p-6 bg-rose-50 text-rose-500 rounded-full animate-pulse">
+        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 md:p-12 shadow-2xl border border-stone-100 text-center space-y-6 md:space-y-8">
+          <div className="inline-block p-4 sm:p-5 md:p-6 bg-rose-50 text-rose-500 rounded-full animate-pulse">
             <Music2 size={64} />
           </div>
           <div className="space-y-2">
-            <h2 className="text-4xl font-bold text-stone-900 tracking-tight">Plant a Sound</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight">Plant a Sound</h2>
             <p className="text-stone-500 font-medium max-w-md mx-auto">
               Sync your favorite study beats. The audio will stay with you as you navigate through PomoGrove.
             </p>
@@ -286,7 +286,7 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
 
           {/* Create playlist */}
           <div className="bg-white rounded-3xl p-6 shadow-lg border border-stone-100">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
               <div>
                 <h2 className="text-xl font-bold text-stone-900">My Playlists</h2>
                 <p className="text-xs text-stone-400 mt-0.5">{playlists.length}/10 playlists used</p>
@@ -297,7 +297,7 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
                 ))}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <FolderPlus className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
                 <input
@@ -312,7 +312,7 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
               <button
                 onClick={handleCreatePlaylist}
                 disabled={loading || playlists.length >= 10}
-                className="px-4 py-3 bg-stone-900 text-white rounded-xl font-bold text-sm hover:bg-stone-800 transition-all disabled:opacity-40 flex items-center gap-2"
+                className="px-4 py-3 bg-stone-900 text-white rounded-xl font-bold text-sm hover:bg-stone-800 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={16} />}
                 Create
@@ -336,30 +336,30 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
               <div key={pl.id} className="bg-white rounded-3xl shadow-lg border border-stone-100 overflow-hidden">
 
                 {/* Playlist row */}
-                <div className="flex items-center gap-3 p-4">
+                <div className="flex items-center gap-2 sm:gap-3 p-4">
                   <button
                     onClick={() => setExpandedId(expandedId === pl.id ? null : pl.id)}
-                    className="flex-1 flex items-center gap-3 text-left group"
+                    className="flex-1 min-w-0 flex items-center gap-3 text-left group"
                   >
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
                       {expandedId === pl.id ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     </div>
-                    <div>
-                      <p className="font-bold text-stone-900 group-hover:text-emerald-700 transition-colors">{pl.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 group-hover:text-emerald-700 transition-colors truncate">{pl.name}</p>
                       <p className="text-xs text-stone-400">{pl.items.length}/20 tracks</p>
                     </div>
                   </button>
                   {pl.items.length > 0 && (
                     <button
                       onClick={() => onSetYoutubeId(pl.items.map(i => i.youtube_id).join(','))}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-xl text-xs font-black hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-xl text-xs font-black hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 flex-shrink-0"
                     >
-                      <Play size={12} fill="currentColor" /> PLAY ALL
+                      <Play size={12} fill="currentColor" /> <span className="hidden sm:inline">PLAY ALL</span>
                     </button>
                   )}
                   <button
                     onClick={() => handleDeletePlaylist(pl.id)}
-                    className="p-2 text-stone-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                    className="p-2 text-stone-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all flex-shrink-0"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -377,7 +377,7 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
                       <div key={item.id} className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl group hover:bg-emerald-50 transition-colors">
                         <button
                           onClick={() => onSetYoutubeId(item.youtube_id)}
-                          className="flex-1 flex items-center gap-3 text-left"
+                          className="flex-1 min-w-0 flex items-center gap-3 text-left"
                         >
                           <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-all text-stone-400 flex-shrink-0">
                             <Play size={14} />
@@ -389,7 +389,7 @@ const Music: React.FC<MusicProps> = ({ onSetYoutubeId, currentYoutubeId, uid }) 
                         </button>
                         <button
                           onClick={() => handleDeleteItem(pl.id, item.id)}
-                          className="p-1.5 text-stone-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          className="p-1.5 text-stone-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex-shrink-0"
                         >
                           <X size={14} />
                         </button>
