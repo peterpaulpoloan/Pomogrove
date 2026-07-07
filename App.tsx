@@ -92,7 +92,8 @@ const AppContent: React.FC<{
     setShowLogoutToast(true);
     // Small delay so the user sees the toast before the screen clears
     await new Promise((r) => setTimeout(r, 900));
-    handleLogout();
+    await handleLogout();
+    setShowLogoutToast(false);
   };
 
   const toggleTimer = () => setIsActive(!isActive);
@@ -171,7 +172,7 @@ const AppContent: React.FC<{
       <main className={`flex-1 ${user ? 'pt-16 md:pt-0 md:ml-64' : ''} ${DEMO_MODE ? 'mt-6' : ''}`}>
         <Routes>
           <Route path="/" element={!user ? <Landing onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
-          <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/dashboard" />} />
+          <Route path="/dashboard" element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/" />} />
           <Route path="/pomodoro" element={user ? <Pomodoro user={user} timeLeft={timeLeft} isActive={isActive} isBreak={isBreak} toggleTimer={toggleTimer} resetTimer={resetTimer} /> : <Navigate to="/" />} />
           <Route path="/active-recall" element={user ? <ActiveRecall user={user} /> : <Navigate to="/" />} />
           <Route path="/notes" element={user ? <Notes user={user} /> : <Navigate to="/" />} />
