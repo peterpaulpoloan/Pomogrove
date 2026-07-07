@@ -19,15 +19,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 md:space-y-8">
       {/* Header Profile Section */}
-      <section className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center gap-8">
-          <div className="relative group">
+      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm">
+        <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+          <div className="relative group flex-shrink-0">
             <img 
               src={user.photoURL || `https://picsum.photos/seed/${user.uid}/150`}
               alt="Profile"
-              className="w-32 h-32 rounded-full object-cover border-4 border-emerald-100 shadow-lg"
+              className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-emerald-100 shadow-lg"
             />
             {isEditing && (
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer">
@@ -36,20 +36,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
             )}
           </div>
 
-          <div className="flex-1 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
+          <div className="flex-1 min-w-0 w-full text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 sm:gap-4 mb-2">
               {isEditing ? (
                 <input 
                   value={tempName}
                   onChange={(e) => setTempName(e.target.value)}
-                  className="text-3xl font-bold bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 outline-none"
+                  className="text-2xl sm:text-3xl font-bold bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 outline-none w-full max-w-xs sm:max-w-sm"
                 />
               ) : (
-                <h2 className="text-3xl font-bold text-stone-900">{user.displayName}</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 truncate">{user.displayName}</h2>
               )}
               <button 
                 onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                className="p-2 hover:bg-stone-100 rounded-lg transition-colors text-stone-400 hover:text-emerald-600"
+                className="p-2 hover:bg-stone-100 rounded-lg transition-colors text-stone-400 hover:text-emerald-600 flex-shrink-0"
               >
                 {isEditing ? <Save size={20} /> : <Edit3 size={20} />}
               </button>
@@ -63,11 +63,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
                   className="w-full text-stone-600 bg-stone-50 border border-stone-200 rounded-lg p-2 outline-none h-20"
                 />
               ) : (
-                <p className="text-stone-600 italic">"{user.bio}"</p>
+                <p className="text-stone-600 italic break-words">"{user.bio}"</p>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4">
               <span className="px-4 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-sm font-bold flex items-center gap-2">
                 <Award size={16} />
                 Level {user.level}
@@ -82,30 +82,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
       </section>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0">
             <Target size={24} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-stone-500 font-medium">Focus Sessions</p>
             <p className="text-2xl font-bold">{user.totalSessions}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl flex-shrink-0">
             <Flame size={24} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-stone-500 font-medium">Current Streak</p>
             <p className="text-2xl font-bold">{user.streak} Days</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
+          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl flex-shrink-0">
             <Award size={24} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-stone-500 font-medium">Trees Grown</p>
             <p className="text-2xl font-bold">{Math.max(0, Math.floor((user.level - 1) / 10))}</p>
           </div>
@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, updateUser }) => {
       </div>
 
       {/* Activity Calendar Section */}
-      <section className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm">
+      <section className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 border border-stone-200 shadow-sm overflow-x-auto">
         <ActivityCalendar user={user} />
       </section>
     </div>
