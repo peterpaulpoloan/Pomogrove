@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sprout, AlertCircle } from 'lucide-react';
+import { Sprout, AlertCircle, Mail, Lock } from 'lucide-react';
 import * as Auth from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
@@ -7,6 +7,8 @@ const {
   signInWithPopup,
   signInWithRedirect,
   GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
 } = Auth as any;
 
 interface LandingProps {
@@ -16,6 +18,11 @@ interface LandingProps {
 const Landing: React.FC<LandingProps> = () => {
   const [error, setError]     = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // ── Native email/password state ─────────────────────────────────────────
+  const [mode, setMode]         = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
 
   // ── Google sign-in ─────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
@@ -39,6 +46,56 @@ const Landing: React.FC<LandingProps> = () => {
       setError(err.message || 'An error occurred during authentication.');
       setLoading(false);
     }
+  };
+
+  // ── Native email/password sign-in / sign-up ─────────────────────────────
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (mode === 'signin') {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err: any) {
+      setError(friendlyAuthError(err.code) || err.message || 'An error occurred during authentication.');
+      setLoading(false);
+    }
+  };
+
+  const friendlyAuthError = (code?: string) => {
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'That email address looks invalid.';
+      case 'auth/user-not-found':
+        return 'No account found with that email.';
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Incorrect email or password.';
+      case 'auth/email-already-in-use':
+        return 'An account already exists with that email.';
+      case 'auth/weak-password':
+        return 'Password is too weak. Please use at least 6 characters.';
+      default:
+        return null;
+    }
+  };
+
+  const toggleMode = () => {
+    setError(null);
+    setMode((m) => (m === 'signin' ? 'signup' : 'signin'));
   };
 
   return (
@@ -74,7 +131,9 @@ const Landing: React.FC<LandingProps> = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 mb-2">Welcome to PomoGrove</h2>
             <p className="text-stone-500 text-sm">
-              Sign in to start growing your productivity tree.
+              {mode === 'signin'
+                ? 'Sign in to start growing your productivity tree.'
+                : 'Create an account to start growing your productivity tree.'}
             </p>
           </div>
 
@@ -88,6 +147,76 @@ const Landing: React.FC<LandingProps> = () => {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Native email/password form */}
+          <form onSubmit={handleEmailAuth} className="space-y-3 mb-4">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+              <input
+                data-testid="email-input"
+                type="email"
+                autoComplete="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="w-full py-3 pl-10 pr-4 bg-white border-2 border-stone-200 rounded-xl text-stone-800
+                  placeholder:text-stone-400 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+              <input
+                data-testid="password-input"
+                type="password"
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="w-full py-3 pl-10 pr-4 bg-white border-2 border-stone-200 rounded-xl text-stone-800
+                  placeholder:text-stone-400 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
+
+            <button
+              data-testid="email-auth-submit-btn"
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 bg-emerald-600 text-white rounded-xl font-bold
+                hover:bg-emerald-700 transition-colors shadow-lg flex items-center justify-center
+                ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-emerald-200 border-t-white rounded-full animate-spin" />
+              ) : mode === 'signin' ? (
+                'Sign in'
+              ) : (
+                'Create account'
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-stone-500 mb-6">
+            {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              type="button"
+              data-testid="toggle-auth-mode-btn"
+              onClick={toggleMode}
+              disabled={loading}
+              className="text-emerald-600 font-semibold hover:underline"
+            >
+              {mode === 'signin' ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-stone-200" />
+            <span className="text-xs uppercase text-stone-400 font-semibold">or</span>
+            <div className="h-px flex-1 bg-stone-200" />
+          </div>
 
           {/* Google button */}
           <button
